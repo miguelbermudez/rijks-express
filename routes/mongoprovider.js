@@ -14,7 +14,6 @@ var MongoClient = require('mongodb').MongoClient,
     path = require('path'),
     mime = require('mime-magic'),
     request = require('request'),
-    q = require('q'),
     db;
 
 var mongoClient = new MongoClient(new Server('localhost', 27017));
@@ -38,7 +37,7 @@ exports.getPaintings = function(req, res) {
   var skip, page_size;
 
   page_size = 10
-  skip = parseInt(req.params.skip) || 0;
+  skip = parseInt(req.query.skip) || 0;
   if (skip < 0) { skip = 0; }
   console.log("\tskip: ", skip, ' pagesz: ', page_size);
 
@@ -78,6 +77,7 @@ exports.resizeImage = function(req, res) {
     srcPath: dstFilename_full,
     dstPath: dstFilename,
     quality: 60,
+    progressive: true,
     filter: 'box',
     width: 1000,
     height: 2000
@@ -87,23 +87,25 @@ exports.resizeImage = function(req, res) {
   r = request(_url.href).pipe(fs.createWriteStream(dstFilename_full));
   //when original image is done dowloading...
   r.on('close', function() {
+
     //resize image
-    im.resize(imOptions, function(err, stdout, stderr) {
-      if (err) throw err;
-      console.log('resized ' + filename + '.jpeg to fit ' + dimensions);
-
-      //read img from cache directory
-      fs.readFile(dstFilename, function(err, img) {
-        var etag;
-
-        //get stats on img
-        fs.stat(dstFilename_full, function(err, stat) {
-          etag = stat.size + '-' + Date.parse(stat.mtime);
-          sendImage(res, dstFilename, stat);
-        });
-      });
-    });
+    im.resize(imOptions, function(err, stdout, stderr) { postImgResize(err); });
   });
+
+  var postImgResize = function(err) {
+    if (err) throw err;
+    console.log('resized ' + filename + '.jpeg to fit ' + dimensions);
+    getFileStat();
+  }
+
+  var getFileStat = function() {
+    fs.stat(dstFilename_full, function(err, stat) { postFileStat(err, stat); });
+  }
+
+  var postFileStat = function(err, stat) {
+    if (err) throw err;
+    sendImage(res, dstFilename, stat);
+  }
 };
 
 exports.getImage = function(req, res) {
@@ -118,8 +120,8 @@ exports.getImage = function(req, res) {
   }
 
   fs.stat(cachedImgFilename, function(err, stat) {
-    res.setHeader('Last-Modified', stat.mtime);
     if (!err) {
+      res.setHeader('Last-Modified', stat.mtime);
       sendImage(res, cachedImgFilename, stat);
     }
     else {
