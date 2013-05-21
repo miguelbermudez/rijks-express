@@ -7,8 +7,15 @@
  */
 
 var MongoClient = require('mongodb').MongoClient,
-  Server = require('mongodb').Server,
-  db;
+    Server = require('mongodb').Server,
+    url = require('url'),
+    im = require('imagemagick'),
+    fs = require('fs'),
+    path = require('path'),
+    mime = require('mime-magic'),
+    request = require('request'),
+    q = require('q'),
+    db;
 
 var mongoClient = new MongoClient(new Server('localhost', 27017));
 mongoClient.open(function(err, mongoClient) {
@@ -48,6 +55,94 @@ exports.getPainting = function(req, res) {
   console.log("id: ", id);
   db.collection('paintings').find({work_id: id }).toArray(function(err, work) {
     res.jsonp(work);
+  });
+};
+
+exports.resizeImage = function(req, res) {
+  console.log("params: ", req.params);
+  var dimensions, _url, filename, dstFilename_full
+    , dstFilename, r, imOptions;
+
+  //dimensions from url
+  dimensions = req.params.dimensions;
+
+  //url parts
+  _url = req.query.url;
+  _url = url.parse(_url);
+
+  //filenames
+  filename = _url.query.toLowerCase().match(/=(.+)$/i)[1]
+  dstFilename = path.resolve(require.main.dirname, 'image-cache', filename + ".jpeg");
+  dstFilename_full = path.resolve(require.main.dirname, 'image-cache', filename + "-full.jpeg");
+  imOptions = {
+    srcPath: dstFilename_full,
+    dstPath: dstFilename,
+    quality: 60,
+    filter: 'box',
+    width: 1000,
+    height: 2000
+  };
+
+  //get original image
+  r = request(_url.href).pipe(fs.createWriteStream(dstFilename_full));
+  //when original image is done dowloading...
+  r.on('close', function() {
+    //resize image
+    im.resize(imOptions, function(err, stdout, stderr) {
+      if (err) throw err;
+      console.log('resized ' + filename + '.jpeg to fit ' + dimensions);
+
+      //read img from cache directory
+      fs.readFile(dstFilename, function(err, img) {
+        var etag;
+
+        //get stats on img
+        fs.stat(dstFilename_full, function(err, stat) {
+          etag = stat.size + '-' + Date.parse(stat.mtime);
+          sendImage(res, dstFilename, stat);
+        });
+      });
+    });
+  });
+};
+
+exports.getImage = function(req, res) {
+  var imageId, cachedImgFilename, isFullImgReq;
+
+  imageId = req.query.id;
+  isFullImgReq = req.query.full;
+  if (isFullImgReq) {
+    cachedImgFilename  = path.resolve(require.main.dirname, 'image-cache', imageId + "-full.jpeg");
+  } else {
+    cachedImgFilename  = path.resolve(require.main.dirname, 'image-cache', imageId + ".jpeg");
+  }
+
+  fs.stat(cachedImgFilename, function(err, stat) {
+    res.setHeader('Last-Modified', stat.mtime);
+    if (!err) {
+      sendImage(res, cachedImgFilename, stat);
+    }
+    else {
+      console.log('redirecting...');
+      res.redirect('resize/1000x2000?url=https://www.rijksmuseum.nl/assetimage2.jsp?id=' + imageId);
+    }
+  })
+};
+
+var sendImage = function(res, f, stat) {
+  var etag = stat.size + '-' + Date.parse(stat.mtime);
+  fs.readFile(f, function(err, img) {
+    mime(f, function(err, mimeType) {
+      if (!err) {
+        console.log('image type: ', mimeType);
+        res.setHeader('Last-Modified', stat.mtime);
+        res.setHeader('Content-Length', img.length);
+        res.setHeader('ETag', etag);
+        res.setHeader("Content-Type", mimeType);
+        res.statusCode = 302;
+        res.end(img, 'binary');
+      }
+    });
   });
 };
 
