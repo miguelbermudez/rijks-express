@@ -33,6 +33,8 @@ app.get('/users', user.list);
 app.get('/collections', mongo.getCollections);
 app.get('/paintings', mongo.getPaintings);
 app.get('/painting/:id', mongo.getPainting);
+app.get('/image', mongo.getImage);
+app.get('/resize/:dimensions', mongo.resizeImage);
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port'));
