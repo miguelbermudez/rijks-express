@@ -12,6 +12,9 @@ var express = require('express')
 
 var app = express();
 
+//set maxsocketsss
+http.globalAgent.maxSockets = 20;
+
 // all environments
 app.set('port', process.env.PORT || 3000);
 app.set('views', __dirname + '/views');
