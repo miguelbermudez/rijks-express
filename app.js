@@ -13,7 +13,7 @@ var express = require('express')
 var app = express();
 
 //set maxsocketsss
-http.globalAgent.maxSockets = 20;
+http.globalAgent.maxSockets = 50;
 
 // all environments
 app.set('port', process.env.PORT || 3000);
