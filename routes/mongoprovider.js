@@ -14,6 +14,7 @@ var MongoClient = require('mongodb').MongoClient,
     path = require('path'),
     mime = require('mime-magic'),
     request = require('request'),
+    appRunDirname = require('path').dirname(require.main.filename),
     db;
 
 var mongoClient = new MongoClient(new Server('localhost', 27017));
@@ -71,8 +72,8 @@ exports.resizeImage = function(req, res) {
 
   //filenames
   filename = _url.query.toLowerCase().match(/=(.+)$/i)[1]
-  dstFilename = path.resolve(require.main.dirname, 'image-cache', filename + ".jpeg");
-  dstFilename_full = path.resolve(require.main.dirname, 'image-cache', filename + "-full.jpeg");
+  dstFilename = path.resolve(appRunDirname, 'image-cache', filename + ".jpeg");
+  dstFilename_full = path.resolve(appRunDirname, 'image-cache', filename + "-full.jpeg");
   imOptions = {
     srcPath: dstFilename_full,
     dstPath: dstFilename,
@@ -114,9 +115,9 @@ exports.getImage = function(req, res) {
   imageId = req.query.id;
   isFullImgReq = req.query.full;
   if (isFullImgReq) {
-    cachedImgFilename  = path.resolve(require.main.dirname, 'image-cache', imageId + "-full.jpeg");
+    cachedImgFilename  = path.resolve(appRunDirname, 'image-cache', imageId + "-full.jpeg");
   } else {
-    cachedImgFilename  = path.resolve(require.main.dirname, 'image-cache', imageId + ".jpeg");
+    cachedImgFilename  = path.resolve(appRunDirname, 'image-cache', imageId + ".jpeg");
   }
 
   fs.stat(cachedImgFilename, function(err, stat) {
