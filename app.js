@@ -8,7 +8,8 @@ var express = require('express')
   , user = require('./routes/user')
   , http = require('http')
   , path = require('path')
-  , mongo = require('./routes/mongoprovider');
+  , mongo = require('./routes/mongoprovider')
+  , imgColor = require('./routes/image');
 
 var app = express();
 
@@ -38,6 +39,8 @@ app.get('/paintings', mongo.getPaintings);
 app.get('/painting/:id', mongo.getPainting);
 app.get('/image', mongo.getImage);
 app.get('/resize/:dimensions', mongo.resizeImage);
+app.get('/color/palette/:id', imgColor.getPalette);
+app.get('/color/dominant/:id', imgColor.getDominantColor);
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port'));
