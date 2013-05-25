@@ -86,7 +86,7 @@ exports.resizeImage = function(req, res) {
 
   //get original image
   r = request(_url.href).pipe(fs.createWriteStream(dstFilename_full));
-  //when original image is done dowloading...
+  //when original image is done downloading...
   r.on('close', function() {
 
     //resize image
